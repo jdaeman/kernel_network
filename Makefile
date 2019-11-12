@@ -1,4 +1,5 @@
-obj-m := spoof.o
+#obj-m := spoof.o
+obj-m := test.o
 
 PWD := $(shell pwd)
 KDIR := /lib/modules/$(shell uname -r)/build
