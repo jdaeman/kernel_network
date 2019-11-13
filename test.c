@@ -2,10 +2,11 @@
 #include <linux/module.h>
 
 #include <linux/fs.h>
+#include <net/ip_fib.h>
 
-int test_init(void)
+
+static int test1(void)
 {
-	/*struct fib_result res;
 	struct flowi4 f4;
 	struct fib_table * ft;
 	int ret = fib_lookup(&init_net, &f4, &res, 0);
@@ -20,8 +21,12 @@ int test_init(void)
 		return -1;
 	}
 
-	printk("ft is not null\n");*/
+	printk("ft is not null\n");
+	return 0;
+}
 
+static int test2(void)
+{
 	struct file * file = open_exec("/proc/net/route");
 	if (!file)
 		printk("file is null\n");
@@ -38,6 +43,12 @@ int test_init(void)
 	}
 
 
+	return -1;
+}
+
+int test_init(void)
+{
+	
 	return -1;
 }
 
