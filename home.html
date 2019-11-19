@@ -1,0 +1,84 @@
+<html>
+	<head>
+		<title>Movie Database</title>
+		<style>
+			#head {
+			display:block;
+			align:center;
+			text-align:center;
+			padding-top:150px;
+			font-family:'Lucida Console';
+			}
+
+			#tail {
+			display:block;
+			align:center;
+			text-align:center;
+			padding-top:150px;
+			}
+
+			#extra {
+			display:block;
+			align:right;
+			text-align:right;
+			padding-top:200px;
+			}
+
+			input::placeholder {
+			font-family:'Courier New';
+			font-style:italic;
+			}
+
+			input[type=text] {
+			width:35%;
+			box-sizing:border-box;
+			border:2px solid #ccc;
+			border-radius:40px 40px 40px 40px;
+			font-size:14px;
+			background-image:url('./image/searchicon.png');
+			background-position:left;
+			background-repeat:no-repeat;
+			background-size:25px;
+			padding-left:40px;
+			padding-top:10px;
+			padding-bottom:10px;
+			outline:none;
+			}
+
+			input[type=file] {
+			font-size:10px;
+			outline:none;
+			}
+
+			input[type=submit] {
+			font-size:10px;
+			outline:none
+			}
+	
+		</style>
+	</head>
+
+	<body>	
+		<div id='head'>
+			<h1>Movie Database</h1>
+		</div>
+
+		<div id='tail'>
+			<form method='post' action='search.php'>
+				<input type='text' name='title' size='64'
+					placeholder='Keyword for searching...'>
+			</form>
+
+			<div id='extra'>
+				<form method='post' action='filehandle.php' enctype='multipart/form-data'>
+					<input type='file' name='filename'>
+					<input type='submit' value='send'>
+				</form>
+			</div>
+		</div>	
+	</body>
+
+</html>
+
+
+
