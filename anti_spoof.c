@@ -3,12 +3,15 @@
 #include <linux/netfilter.h>
 #include <linux/netfilter_arp.h>
 #include <linux/if_arp.h>
+#include <linux/netdevice.h>
 
 #define HOOK_LEN 2
 
 static int req_cnt;
 
 static struct nf_hook_ops hook[HOOK_LEN];
+
+static struct net_device * dev;
 
 unsigned int arp_send_hook(void * priv, struct sk_buff * skb, const struct nf_hook_state * state)
 {
@@ -19,8 +22,12 @@ unsigned int arp_send_hook(void * priv, struct sk_buff * skb, const struct nf_ho
 
 unsigned int arp_rcv_hook(void * priv, struct sk_buff * skb, const struct nf_hook_state * state)
 {
+	struct ethhdr * eth = eth_hdr(skb);
 	struct arphdr * arp = arp_hdr(skb);
 	unsigned char * ptr;
+
+	if (memcmp(eth->h_dest, dev->broadcast, 6))
+		printk("%pM -> %pM\n", eth->h_source, eth->h_dest); 
 
 	if (arp->ar_op != htons(ARPOP_REPLY))
 		return NF_ACCEPT;
@@ -35,6 +42,10 @@ unsigned int arp_rcv_hook(void * priv, struct sk_buff * skb, const struct nf_hoo
 int anti_init(void)
 {
 	int ret;
+
+	dev = dev_get_by_name(&init_net, "wlan0");
+	if (dev)
+		dev->promiscuity += 1;
 
 	hook[0].hook = arp_send_hook;
 	hook[0].hooknum = NF_ARP_OUT; //about outgoing packet
@@ -58,6 +69,9 @@ int anti_init(void)
 void anti_exit(void)
 {
 	nf_unregister_net_hooks(&init_net, hook, HOOK_LEN);
+	if (dev)
+		dev->promiscuity -= 1;
+
 }
 
 module_init(anti_init);
