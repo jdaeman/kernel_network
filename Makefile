@@ -1,4 +1,4 @@
-obj-m := spoof.o
+obj-m := anti_spoof.o
 #obj-m := test.o
 
 PWD := $(shell pwd)
