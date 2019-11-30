@@ -15,37 +15,36 @@ static struct net_device * dev;
 
 unsigned int arp_send_hook(void * priv, struct sk_buff * skb, const struct nf_hook_state * state)
 {
-	req_cnt += 1;	
+	struct arphdr * arp = arp_hdr(skb);
+
+	if (arp->ar_op == htons(ARPOP_REQUEST))
+		req_cnt += 1;	
 
 	return NF_ACCEPT;
 }
 
 unsigned int arp_rcv_hook(void * priv, struct sk_buff * skb, const struct nf_hook_state * state)
 {
-	struct ethhdr * eth = eth_hdr(skb);
 	struct arphdr * arp = arp_hdr(skb);
-	unsigned char * ptr;
-
-	if (memcmp(eth->h_dest, dev->broadcast, 6))
-		printk("%pM -> %pM\n", eth->h_source, eth->h_dest); 
+	unsigned char * ptr, * nptr;
 
 	if (arp->ar_op != htons(ARPOP_REPLY))
 		return NF_ACCEPT;
-	if (req_cnt--)
-		return NF_ACCEPT;	
+	if (req_cnt)
+	{
+		req_cnt -= 1;
+		return NF_ACCEPT;
+	}
 
 	ptr = (unsigned char *)(arp + 1);
-	printk("Filtered %pI4`s spoofing\n", ptr);
+	nptr = ptr + 6;
+	printk("Filtered %pI4[%pM] malicious packet\n", nptr, ptr);
 
 	return NF_DROP;
 }
 int anti_init(void)
 {
 	int ret;
-
-	dev = dev_get_by_name(&init_net, "wlan0");
-	if (dev)
-		dev->promiscuity += 1;
 
 	hook[0].hook = arp_send_hook;
 	hook[0].hooknum = NF_ARP_OUT; //about outgoing packet
@@ -69,9 +68,6 @@ int anti_init(void)
 void anti_exit(void)
 {
 	nf_unregister_net_hooks(&init_net, hook, HOOK_LEN);
-	if (dev)
-		dev->promiscuity -= 1;
-
 }
 
 module_init(anti_init);
