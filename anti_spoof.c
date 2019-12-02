@@ -4,6 +4,7 @@
 #include <linux/netfilter_arp.h>
 #include <linux/if_arp.h>
 #include <linux/netdevice.h>
+#include <net/neighbour.h>
 
 #define HOOK_LEN 2
 
@@ -16,7 +17,7 @@ static struct net_device * dev;
 unsigned int arp_send_hook(void * priv, struct sk_buff * skb, const struct nf_hook_state * state)
 {
 	struct arphdr * arp = arp_hdr(skb);
-
+	
 	if (arp->ar_op == htons(ARPOP_REQUEST))
 		req_cnt += 1;	
 
@@ -27,17 +28,27 @@ unsigned int arp_rcv_hook(void * priv, struct sk_buff * skb, const struct nf_hoo
 {
 	struct arphdr * arp = arp_hdr(skb);
 	unsigned char * ptr, * nptr;
+	
+	unsigned int ip;
+	struct neighbour * neigh = NULL;
+	extern struct neigh_table arp_tbl;
 
 	if (arp->ar_op != htons(ARPOP_REPLY))
 		return NF_ACCEPT;
-	if (req_cnt)
+	/*if (req_cnt)
 	{
 		req_cnt -= 1;
 		return NF_ACCEPT;
-	}
-
+	}*/
 	ptr = (unsigned char *)(arp + 1);
 	nptr = ptr + 6;
+
+	ip = *((unsigned int *)nptr);
+	//ip = htonl(ip);
+	neigh = neigh_lookup(&arp_tbl, &ip, dev);
+	if (!neigh)
+		return NF_ACCEPT;
+
 	printk("Filtered %pI4[%pM] malicious packet\n", nptr, ptr);
 
 	return NF_DROP;
@@ -45,6 +56,8 @@ unsigned int arp_rcv_hook(void * priv, struct sk_buff * skb, const struct nf_hoo
 int anti_init(void)
 {
 	int ret;
+
+	dev = dev_get_by_index(&init_net, 2);
 
 	hook[0].hook = arp_send_hook;
 	hook[0].hooknum = NF_ARP_OUT; //about outgoing packet
