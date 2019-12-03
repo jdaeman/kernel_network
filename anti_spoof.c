@@ -33,24 +33,18 @@ unsigned int arp_rcv_hook(void * priv, struct sk_buff * skb, const struct nf_hoo
 	struct neighbour * neigh = NULL;
 	extern struct neigh_table arp_tbl;
 
-	if (arp->ar_op != htons(ARPOP_REPLY))
-		return NF_ACCEPT;
-	/*if (req_cnt)
-	{
-		req_cnt -= 1;
-		return NF_ACCEPT;
-	}*/
-	ptr = (unsigned char *)(arp + 1);
-	nptr = ptr + 6;
-
+	ptr = (unsigned char *)(arp + 1); //sha
+	nptr = ptr + 6; //spa
 	ip = *((unsigned int *)nptr);
-	//ip = htonl(ip);
+
 	neigh = neigh_lookup(&arp_tbl, &ip, dev);
 	if (!neigh)
 		return NF_ACCEPT;
 
+	if (!memcmp(neigh->ha, ptr, 6))
+		return NF_ACCEPT;
+	
 	printk("Filtered %pI4[%pM] malicious packet\n", nptr, ptr);
-
 	return NF_DROP;
 }
 int anti_init(void)
