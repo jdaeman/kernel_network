@@ -8,8 +8,6 @@
 
 #define HOOK_LEN 2
 
-static int req_cnt;
-
 static struct nf_hook_ops hook[HOOK_LEN];
 
 static struct net_device * dev;
@@ -18,9 +16,6 @@ unsigned int arp_send_hook(void * priv, struct sk_buff * skb, const struct nf_ho
 {
 	struct arphdr * arp = arp_hdr(skb);
 	
-	if (arp->ar_op == htons(ARPOP_REQUEST))
-		req_cnt += 1;	
-
 	return NF_ACCEPT;
 }
 
@@ -44,9 +39,10 @@ unsigned int arp_rcv_hook(void * priv, struct sk_buff * skb, const struct nf_hoo
 	if (!memcmp(neigh->ha, ptr, 6))
 		return NF_ACCEPT;
 	
-	printk("Filtered %pI4[%pM] malicious packet\n", nptr, ptr);
+	printk("Rejected %pI4[%pM], maybe malicious packet\n", nptr, ptr);
 	return NF_DROP;
 }
+
 int anti_init(void)
 {
 	int ret;
